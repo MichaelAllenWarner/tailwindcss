@@ -4,52 +4,89 @@ on:
   push:
     branches: [master]
 
+permissions:
+  contents: read
+
+env:
+  CI: true
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [12]
+        node-version: [16]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Use cached node_modules
-        id: cache
-        uses: actions/cache@v2
+      - name: Cache node_modules
+        uses: actions/cache@v3
         with:
           path: node_modules
-          key: nodeModules-${{ hashFiles('**/package-lock.json') }}-${{ matrix.node-version }}
-          restore-keys: |
-            nodeModules-
+          key: ${{ runner.os }}-${{ matrix.node-version }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      # Cargo already skips downloading dependencies if they already exist
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./oxide/**/Cargo.lock') }}
 
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: npm install
-        env:
-          CI: true
+
+      - name: Build Tailwind CSS
+        run: npx turbo run oxide:build --filter=//
 
       - name: Test
-        run: npm test
-        env:
-          CI: true
+        run: npx turbo run test --filter=//
+
+      # This will swap out the Rust-based oxide version with a simple shim. So that you don't
+      # require all the Rust specific version at tjkhis time.
+      - name: Setup `@tailwindcss/oxide` shim
+        run: |
+          sed "s#\"@tailwindcss/oxide\": \".*\"#\"@tailwindcss/oxide\": \"file:./oxide-node-api-shim\"#" package.json > package_updated.json
+          mv package_updated.json package.json
 
       - name: Resolve version
         id: vars
-        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+        run: |
+          echo "SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: "Version based on commit: 0.0.0-insiders.${{ steps.vars.outputs.sha_short }}"
-        run: npm version 0.0.0-insiders.${{ steps.vars.outputs.sha_short }} --force --no-git-tag-version
+      - name: 'Version based on commit: 0.0.0-insiders.${{ env.SHA_SHORT }}'
+        run: npm version 0.0.0-insiders.${{ env.SHA_SHORT }} --force --no-git-tag-version
 
       - name: Publish
         run: npm publish --tag insiders
         env:
-          CI: true
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Trigger Tailwind Play update
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.TAILWIND_PLAY_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'tailwindlabs',
+              repo: 'play.tailwindcss.com',
+              ref: 'master',
+              workflow_id: 'upgrade-tailwindcss.yml',
+              inputs: {
+                insidersVersion: '0.0.0-insiders.${{ env.SHA_SHORT }}'
+              }
+            })

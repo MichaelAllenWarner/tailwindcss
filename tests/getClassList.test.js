@@ -59,3 +59,61 @@ it('should generate every possible class while handling negatives and prefixes',
 
   expect(classes).not.toContain('-tw-m-DEFAULT')
 })
+
+it('should not generate utilities with opacity by default', () => {
+  let config = {}
+  let context = createContext(resolveConfig(config))
+  let classes = context.getClassList()
+
+  expect(classes).not.toContain('bg-red-500/50')
+})
+
+it('should not generate utilities with opacity even if safe-listed', () => {
+  let config = {
+    safelist: [
+      {
+        pattern: /^bg-red-(400|500)(\/(40|50))?$/,
+      },
+    ],
+  }
+
+  let context = createContext(resolveConfig(config))
+  let classes = context.getClassList()
+
+  expect(classes).not.toContain('bg-red-500/50')
+})
+
+it('should not generate utilities that are set to undefined or null to so that they are removed', () => {
+  let config = {
+    theme: {
+      extend: {
+        colors: {
+          red: null,
+          green: undefined,
+          blue: {
+            100: null,
+            200: undefined,
+          },
+        },
+      },
+    },
+    safelist: [
+      {
+        pattern: /^bg-(red|green|blue)-.*$/,
+      },
+    ],
+  }
+
+  let context = createContext(resolveConfig(config))
+  let classes = context.getClassList()
+
+  expect(classes).not.toContain('bg-red-100') // Red is `null`
+
+  expect(classes).not.toContain('bg-green-100') // Green is `undefined`
+
+  expect(classes).not.toContain('bg-blue-100') // Blue.100 is `null`
+  expect(classes).not.toContain('bg-blue-200') // Blue.200 is `undefined`
+
+  expect(classes).toContain('bg-blue-50')
+  expect(classes).toContain('bg-blue-300')
+})

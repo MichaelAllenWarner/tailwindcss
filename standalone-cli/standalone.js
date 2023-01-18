@@ -9,9 +9,14 @@ let localModules = {
   'tailwindcss/plugin': require('tailwindcss/plugin'),
 
   '@tailwindcss/aspect-ratio': require('@tailwindcss/aspect-ratio'),
+  '@tailwindcss/container-queries': require('@tailwindcss/container-queries'),
   '@tailwindcss/forms': require('@tailwindcss/forms'),
   '@tailwindcss/line-clamp': require('@tailwindcss/line-clamp'),
   '@tailwindcss/typography': require('@tailwindcss/typography'),
+
+  // These are present to allow them to be specified in the PostCSS config file
+  autoprefixer: require('autoprefixer'),
+  tailwindcss: require('tailwindcss'),
 }
 
 Module.prototype.require = function (id) {

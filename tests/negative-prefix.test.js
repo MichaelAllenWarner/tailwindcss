@@ -13,11 +13,11 @@ test('using a negative prefix with a negative scale value', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
-      .mt-2 {
-        margin-top: 8px;
-      }
       .-mt-2 {
         margin-top: -4px;
+      }
+      .mt-2 {
+        margin-top: 8px;
       }
     `)
   })
@@ -54,11 +54,11 @@ test('using a negative prefix without a negative scale value', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
-      .mt-5 {
-        margin-top: 20px;
-      }
       .-mt-5 {
         margin-top: -20px;
+      }
+      .mt-5 {
+        margin-top: 20px;
       }
     `)
   })
@@ -114,11 +114,11 @@ test('a value that includes a variable', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
-      .mt-5 {
-        margin-top: var(--sizing-5);
-      }
       .-mt-5 {
         margin-top: calc(var(--sizing-5) * -1);
+      }
+      .mt-5 {
+        margin-top: var(--sizing-5);
       }
     `)
   })
@@ -136,11 +136,47 @@ test('a value that includes a calc', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
+      .-mt-5 {
+        margin-top: calc(calc(52px * -3) * -1);
+      }
       .mt-5 {
         margin-top: calc(52px * -3);
       }
-      .-mt-5 {
-        margin-top: calc(calc(52px * -3) * -1);
+    `)
+  })
+})
+
+test('a value that includes min/max/clamp functions', () => {
+  let config = {
+    content: [{ raw: html`<div class="mt-min -mt-min mt-max -mt-max mt-clamp -mt-clamp"></div>` }],
+    theme: {
+      margin: {
+        min: 'min(100vmin, 3rem)',
+        max: 'max(100vmax, 3rem)',
+        clamp: 'clamp(1rem, 100vh, 3rem)',
+      },
+    },
+  }
+
+  return run('@tailwind utilities', config).then((result) => {
+    return expect(result.css).toMatchCss(css`
+      .-mt-clamp {
+        margin-top: calc(clamp(1rem, 100vh, 3rem) * -1);
+      }
+      .-mt-max {
+        margin-top: calc(max(100vmax, 3rem) * -1);
+      }
+      .-mt-min {
+        margin-top: calc(min(100vmin, 3rem) * -1);
+      }
+      .mt-clamp {
+        margin-top: clamp(1rem, 100vh, 3rem);
+      }
+      .mt-max {
+        margin-top: max(100vmax, 3rem);
+      }
+      .mt-min {
+        margin-top: min(100vmin, 3rem);
       }
     `)
   })
@@ -177,10 +213,10 @@ test('a zero value', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
-      .mt-0 {
+      .-mt-0 {
         margin-top: 0;
       }
-      .-mt-0 {
+      .mt-0 {
         margin-top: 0;
       }
     `)
@@ -267,11 +303,11 @@ test('using a negative prefix with a negative default scale value', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchCss(css`
-      .mt {
-        margin-top: 8px;
-      }
       .-mt {
         margin-top: -4px;
+      }
+      .mt {
+        margin-top: 8px;
       }
     `)
   })

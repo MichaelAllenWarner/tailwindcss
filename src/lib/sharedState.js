@@ -1,12 +1,15 @@
 export const env = {
   NODE_ENV: process.env.NODE_ENV,
   DEBUG: resolveDebug(process.env.DEBUG),
+  OXIDE: process.env.OXIDE,
 }
 export const contextMap = new Map()
 export const configContextMap = new Map()
 export const contextSourcesMap = new Map()
 export const sourceHashMap = new Map()
 export const NOT_ON_DEMAND = new String('*')
+
+export const NONE = Symbol('__NONE__')
 
 export function resolveDebug(debug) {
   if (debug === undefined) {

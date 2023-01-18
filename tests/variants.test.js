@@ -3,6 +3,7 @@ import path from 'path'
 import postcss from 'postcss'
 
 import { run, css, html, defaults } from './util/run'
+import { env } from '../src/lib/sharedState'
 
 test('variants', () => {
   let config = {
@@ -18,7 +19,9 @@ test('variants', () => {
   `
 
   return run(input, config).then((result) => {
-    let expectedPath = path.resolve(__dirname, './variants.test.css')
+    let expectedPath = env.OXIDE
+      ? path.resolve(__dirname, './variants.oxide.test.css')
+      : path.resolve(__dirname, './variants.test.css')
     let expected = fs.readFileSync(expectedPath, 'utf8')
 
     expect(result.css).toMatchFormattedCss(expected)
@@ -39,12 +42,11 @@ test('order matters and produces different behaviour', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchFormattedCss(css`
-      .hover\:file\:bg-pink-600::file-selector-button:hover {
+      .file\:hover\:bg-pink-600:hover::file-selector-button {
         --tw-bg-opacity: 1;
         background-color: rgb(219 39 119 / var(--tw-bg-opacity));
       }
-
-      .file\:hover\:bg-pink-600:hover::file-selector-button {
+      .hover\:file\:bg-pink-600::file-selector-button:hover {
         --tw-bg-opacity: 1;
         background-color: rgb(219 39 119 / var(--tw-bg-opacity));
       }
@@ -290,21 +292,9 @@ it('should properly handle keyframes with multiple variants', async () => {
         transform: rotate(360deg);
       }
     }
-
     .animate-spin {
       animation: spin 1s linear infinite;
     }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .hover\:animate-spin:hover {
-      animation: spin 1s linear infinite;
-    }
-
     @keyframes bounce {
       0%,
       100% {
@@ -316,21 +306,17 @@ it('should properly handle keyframes with multiple variants', async () => {
         animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
       }
     }
-
     .hover\:animate-bounce:hover {
       animation: bounce 1s infinite;
     }
-
     @keyframes spin {
       to {
         transform: rotate(360deg);
       }
     }
-
-    .focus\:animate-spin:focus {
+    .hover\:animate-spin:hover {
       animation: spin 1s linear infinite;
     }
-
     @keyframes bounce {
       0%,
       100% {
@@ -342,9 +328,16 @@ it('should properly handle keyframes with multiple variants', async () => {
         animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
       }
     }
-
     .focus\:animate-bounce:focus {
       animation: bounce 1s infinite;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .focus\:animate-spin:focus {
+      animation: spin 1s linear infinite;
     }
   `)
 })
@@ -358,14 +351,14 @@ test('custom addVariant with more complex media query params', () => {
     ],
     plugins: [
       function ({ addVariant }) {
-        addVariant('magic', '@media screen and (max-wdith: 600px)')
+        addVariant('magic', '@media screen and (max-width: 600px)')
       },
     ],
   }
 
   return run('@tailwind components;@tailwind utilities', config).then((result) => {
     return expect(result.css).toMatchFormattedCss(css`
-      @media screen and (max-wdith: 600px) {
+      @media screen and (max-width: 600px) {
         .magic\:text-center {
           text-align: center;
         }
@@ -455,6 +448,56 @@ test('before and after variants are a bit special, and forced to the end (2)', (
 
       :where(.prose-headings\:before\:text-center) :is(h1, h2, h3, h4)::before {
         content: var(--tw-content);
+        text-align: center;
+      }
+    `)
+  })
+})
+
+test('returning non-strings and non-selectors in addVariant', () => {
+  /** @type {import('../types/config').Config} */
+  let config = {
+    content: [
+      {
+        raw: html`
+          <div class="peer-aria-expanded:text-center"></div>
+          <div class="peer-aria-expanded-2:text-center"></div>
+        `,
+      },
+    ],
+    plugins: [
+      function ({ addVariant, e }) {
+        addVariant('peer-aria-expanded', ({ modifySelectors, separator }) =>
+          // Returning anything other string | string[] | undefined here is not supported
+          // But we're trying to be lenient here and just throw it out
+          modifySelectors(
+            ({ className }) =>
+              `.peer[aria-expanded="true"] ~ .${e(`peer-aria-expanded${separator}${className}`)}`
+          )
+        )
+
+        addVariant('peer-aria-expanded-2', ({ modifySelectors, separator }) => {
+          let nodes = modifySelectors(
+            ({ className }) => `.${e(`peer-aria-expanded-2${separator}${className}`)}`
+          )
+
+          return [
+            // Returning anything other than strings here is not supported
+            // But we're trying to be lenient here and just throw it out
+            nodes,
+            '.peer[aria-expanded="false"] ~ &',
+          ]
+        })
+      },
+    ],
+  }
+
+  return run('@tailwind components;@tailwind utilities', config).then((result) => {
+    return expect(result.css).toMatchFormattedCss(css`
+      .peer[aria-expanded='true'] ~ .peer-aria-expanded\:text-center {
+        text-align: center;
+      }
+      .peer[aria-expanded='false'] ~ .peer-aria-expanded-2\:text-center {
         text-align: center;
       }
     `)
@@ -817,4 +860,364 @@ test('hoverOnlyWhenSupported adds hover and pointer media features by default', 
       }
     `)
   })
+})
+
+test('multi-class utilities handle selector-mutating variants correctly', () => {
+  let config = {
+    content: [
+      {
+        raw: html`<div
+          class="after:foo after:bar after:baz hover:foo hover:bar hover:baz group-hover:foo group-hover:bar group-hover:baz peer-checked:foo peer-checked:bar peer-checked:baz"
+        ></div>`,
+      },
+      {
+        raw: html`<div
+          class="after:foo1 after:bar1 after:baz1 hover:foo1 hover:bar1 hover:baz1 group-hover:foo1 group-hover:bar1 group-hover:baz1 peer-checked:foo1 peer-checked:bar1 peer-checked:baz1"
+        ></div>`,
+      },
+    ],
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+    @layer utilities {
+      .foo.bar.baz {
+        color: red;
+      }
+      .foo1 .bar1 .baz1 {
+        color: red;
+      }
+    }
+  `
+
+  // The second set of ::after cases (w/ descendant selectors)
+  // are clearly "wrong" BUT you can't have a descendant of a
+  // pseudo - element so the utilities `after:foo1` and
+  // `after:bar1` are non-sensical so this is still
+  // perfectly fine behavior
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      .after\:foo.bar.baz::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .after\:bar.foo.baz::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .after\:baz.foo.bar::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .after\:foo1 .bar1 .baz1::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .foo1 .after\:bar1 .baz1::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .foo1 .bar1 .after\:baz1::after {
+        content: var(--tw-content);
+        color: red;
+      }
+      .hover\:foo:hover.bar.baz {
+        color: red;
+      }
+      .hover\:bar:hover.foo.baz {
+        color: red;
+      }
+      .hover\:baz:hover.foo.bar {
+        color: red;
+      }
+      .hover\:foo1:hover .bar1 .baz1 {
+        color: red;
+      }
+      .foo1 .hover\:bar1:hover .baz1 {
+        color: red;
+      }
+      .foo1 .bar1 .hover\:baz1:hover {
+        color: red;
+      }
+      .group:hover .group-hover\:foo.bar.baz {
+        color: red;
+      }
+      .group:hover .group-hover\:bar.foo.baz {
+        color: red;
+      }
+      .group:hover .group-hover\:baz.foo.bar {
+        color: red;
+      }
+      .group:hover .group-hover\:foo1 .bar1 .baz1 {
+        color: red;
+      }
+      .foo1 .group:hover .group-hover\:bar1 .baz1 {
+        color: red;
+      }
+      .foo1 .bar1 .group:hover .group-hover\:baz1 {
+        color: red;
+      }
+      .peer:checked ~ .peer-checked\:foo.bar.baz {
+        color: red;
+      }
+      .peer:checked ~ .peer-checked\:bar.foo.baz {
+        color: red;
+      }
+      .peer:checked ~ .peer-checked\:baz.foo.bar {
+        color: red;
+      }
+      .peer:checked ~ .peer-checked\:foo1 .bar1 .baz1 {
+        color: red;
+      }
+      .foo1 .peer:checked ~ .peer-checked\:bar1 .baz1 {
+        color: red;
+      }
+      .foo1 .bar1 .peer:checked ~ .peer-checked\:baz1 {
+        color: red;
+      }
+    `)
+  })
+})
+
+test('class inside pseudo-class function :has', () => {
+  let config = {
+    content: [
+      { raw: html`<div class="foo hover:foo sm:foo"></div>` },
+      { raw: html`<div class="bar hover:bar sm:bar"></div>` },
+      { raw: html`<div class="baz hover:baz sm:baz"></div>` },
+    ],
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+    @layer utilities {
+      :where(.foo) {
+        color: red;
+      }
+      :matches(.foo, .bar, .baz) {
+        color: orange;
+      }
+      :is(.foo) {
+        color: yellow;
+      }
+      html:has(.foo) {
+        color: green;
+      }
+    }
+  `
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      :where(.foo) {
+        color: red;
+      }
+      :matches(.foo, .bar, .baz) {
+        color: orange;
+      }
+      :is(.foo) {
+        color: yellow;
+      }
+      html:has(.foo) {
+        color: green;
+      }
+
+      :where(.hover\:foo:hover) {
+        color: red;
+      }
+      :matches(.hover\:foo:hover, .bar, .baz) {
+        color: orange;
+      }
+      :matches(.foo, .hover\:bar:hover, .baz) {
+        color: orange;
+      }
+      :matches(.foo, .bar, .hover\:baz:hover) {
+        color: orange;
+      }
+      :is(.hover\:foo:hover) {
+        color: yellow;
+      }
+      html:has(.hover\:foo:hover) {
+        color: green;
+      }
+      @media (min-width: 640px) {
+        :where(.sm\:foo) {
+          color: red;
+        }
+        :matches(.sm\:foo, .bar, .baz) {
+          color: orange;
+        }
+        :matches(.foo, .sm\:bar, .baz) {
+          color: orange;
+        }
+        :matches(.foo, .bar, .sm\:baz) {
+          color: orange;
+        }
+        :is(.sm\:foo) {
+          color: yellow;
+        }
+        html:has(.sm\:foo) {
+          color: green;
+        }
+      }
+    `)
+  })
+})
+
+test('variant functions returning arrays should output correct results when nesting', async () => {
+  let config = {
+    content: [{ raw: html`<div class="test:foo" />` }],
+    corePlugins: { preflight: false },
+    plugins: [
+      function ({ addUtilities, addVariant }) {
+        addVariant('test', () => ['@media (test)'])
+        addUtilities({
+          '.foo': {
+            display: 'grid',
+            '> *': {
+              'grid-column': 'span 2',
+            },
+          },
+        })
+      },
+    ],
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  let result = await run(input, config)
+
+  expect(result.css).toMatchFormattedCss(css`
+    @media (test) {
+      .test\:foo {
+        display: grid;
+      }
+      .test\:foo > * {
+        grid-column: span 2;
+      }
+    }
+  `)
+})
+
+test('variants with slashes in them work', () => {
+  let config = {
+    content: [
+      {
+        raw: html` <div class="ar-1/10:text-red-500">ar-1/10</div> `,
+      },
+    ],
+    theme: {
+      extend: {
+        screens: {
+          'ar-1/10': { raw: '(min-aspect-ratio: 1/10)' },
+        },
+      },
+    },
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      @media (min-aspect-ratio: 1/10) {
+        .ar-1\/10\:text-red-500 {
+          --tw-text-opacity: 1;
+          color: rgb(239 68 68 / var(--tw-text-opacity));
+        }
+      }
+    `)
+  })
+})
+
+test('variants with slashes suspport modifiers', () => {
+  let config = {
+    content: [
+      {
+        raw: html` <div class="ar-1/10/20:text-red-500">ar-1/10</div> `,
+      },
+    ],
+    corePlugins: { preflight: false },
+    plugins: [
+      function ({ matchVariant }) {
+        matchVariant(
+          'ar',
+          (value, { modifier }) => {
+            return [`@media (min-aspect-ratio: ${value}) and (foo: ${modifier})`]
+          },
+          { values: { '1/10': '1/10' } }
+        )
+      },
+    ],
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      @media (min-aspect-ratio: 1/10) and (foo: 20) {
+        .ar-1\/10\/20\:text-red-500 {
+          --tw-text-opacity: 1;
+          color: rgb(239 68 68 / var(--tw-text-opacity));
+        }
+      }
+    `)
+  })
+})
+
+test('arbitrary variant selectors should not re-order scrollbar pseudo classes', async () => {
+  let config = {
+    content: [
+      {
+        raw: html`
+          <div class="[&::-webkit-scrollbar:hover]:underline" />
+          <div class="[&::-webkit-scrollbar-button:hover]:underline" />
+          <div class="[&::-webkit-scrollbar-thumb:hover]:underline" />
+          <div class="[&::-webkit-scrollbar-track:hover]:underline" />
+          <div class="[&::-webkit-scrollbar-track-piece:hover]:underline" />
+          <div class="[&::-webkit-scrollbar-corner:hover]:underline" />
+          <div class="[&::-webkit-resizer:hover]:underline" />
+        `,
+      },
+    ],
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  let result = await run(input, config)
+
+  expect(result.css).toMatchFormattedCss(css`
+    .\[\&\:\:-webkit-resizer\:hover\]\:underline::-webkit-resizer:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar-button\:hover\]\:underline::-webkit-scrollbar-button:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar-corner\:hover\]\:underline::-webkit-scrollbar-corner:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar-thumb\:hover\]\:underline::-webkit-scrollbar-thumb:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar-track-piece\:hover\]\:underline::-webkit-scrollbar-track-piece:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar-track\:hover\]\:underline::-webkit-scrollbar-track:hover {
+      text-decoration-line: underline;
+    }
+    .\[\&\:\:-webkit-scrollbar\:hover\]\:underline::-webkit-scrollbar:hover {
+      text-decoration-line: underline;
+    }
+  `)
 })

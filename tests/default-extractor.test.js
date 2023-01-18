@@ -468,3 +468,31 @@ test('classes in slim templates', async () => {
   expect(extractions).toContain('italic')
   expect(extractions).toContain('text-gray-500')
 })
+
+test('multi-word + arbitrary values + quotes', async () => {
+  const extractions = defaultExtractor(`
+    grid-cols-['repeat(2)']
+  `)
+
+  expect(extractions).toContain(`grid-cols-['repeat(2)']`)
+})
+
+test('a lot of data', () => {
+  let extractions = defaultExtractor('underline '.repeat(2 ** 17))
+
+  expect(extractions).toContain(`underline`)
+})
+
+test('ruby percent string array', () => {
+  let extractions = defaultExtractor('%w[text-[#bada55]]')
+
+  expect(extractions).toContain(`text-[#bada55]`)
+})
+
+test('arbitrary properties followed by square bracketed stuff', () => {
+  let extractions = defaultExtractor(
+    '<div class="h-16 items-end border border-white [display:inherit]">[foo]</div>'
+  )
+
+  expect(extractions).toContain(`[display:inherit]`)
+})

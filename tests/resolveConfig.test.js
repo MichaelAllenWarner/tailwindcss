@@ -591,6 +591,8 @@ test('theme values in the extend section are not deeply merged when they are sim
       extend: {
         fonts: {
           sans: ['Comic Sans'],
+          serif: ['Papyrus', { fontFeatureSettings: '"cv11"' }],
+          mono: [['Lobster', 'Papyrus'], { fontFeatureSettings: '"cv11"' }],
         },
       },
     },
@@ -619,8 +621,8 @@ test('theme values in the extend section are not deeply merged when they are sim
     theme: {
       fonts: {
         sans: ['Comic Sans'],
-        serif: ['Constantia', 'Georgia', 'serif'],
-        mono: ['Menlo', 'Courier New', 'monospace'],
+        serif: ['Papyrus', { fontFeatureSettings: '"cv11"' }],
+        mono: [['Lobster', 'Papyrus'], { fontFeatureSettings: '"cv11"' }],
       },
     },
   })
@@ -1762,4 +1764,31 @@ test('all helpers can be destructured from the first function argument', () => {
       },
     },
   })
+})
+
+test('does not duplicate extended configs every time resolveConfig is called', () => {
+  let shared = {
+    foo: { bar: { baz: [{ color: 'red' }] } },
+  }
+
+  const createConfig = (color) =>
+    resolveConfig([
+      {
+        theme: {
+          foo: shared.foo,
+          extend: {
+            foo: { bar: { baz: { color } } },
+          },
+        },
+      },
+    ])
+
+  createConfig('orange')
+  createConfig('yellow')
+  createConfig('green')
+
+  const result = createConfig('blue')
+
+  expect(shared.foo.bar.baz).toMatchObject([{ color: 'red' }])
+  expect(result.theme.foo.bar.baz).toMatchObject([{ color: 'red' }, { color: 'blue' }])
 })

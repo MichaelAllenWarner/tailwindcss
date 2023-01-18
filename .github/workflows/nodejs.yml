@@ -9,36 +9,84 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+env:
+  CI: true
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [12, 14, 16]
+        node-version: [16]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+          # cache: 'npm'
 
-      - name: Use cached node_modules
-        id: cache
-        uses: actions/cache@v2
+      - name: Install newer version of npm on older versions of Node.js
+        if: matrix.node-version < 16
+        run: npm install -g npm@7
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
         with:
           path: node_modules
-          key: nodeModules-${{ hashFiles('./package-lock.json') }}-${{ matrix.node-version }}
-          restore-keys: |
-            nodeModules-
+          key: ${{ runner.os }}-${{ matrix.node-version }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      # Cargo already skips downloading dependencies if they already exist
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./oxide/**/Cargo.lock') }}
+
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: npm install
-        env:
-          CI: true
+
+      - name: Build Tailwind CSS
+        run: npx turbo run oxide:build --filter=//
 
       - name: Test
-        run: npm test
-        env:
-          CI: true
+        run: npx turbo run test --filter=//
+
+  lint:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-${{ matrix.node-version }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npx turbo run style --filter=//

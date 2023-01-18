@@ -1,3 +1,4 @@
+let fs = require('fs')
 let path = require('path')
 let { spawn } = require('child_process')
 let resolveToolRoot = require('./resolve-tool-root')
@@ -19,14 +20,30 @@ function debounce(fn, ms) {
 
 module.exports = function $(command, options = {}) {
   let abortController = new AbortController()
-  let cwd = resolveToolRoot()
+  let root = resolveToolRoot()
+  let cwd = options.cwd ?? root
 
   let args = options.shell
     ? [command]
     : (() => {
         let args = command.split(' ')
         command = args.shift()
-        command = command === 'node' ? command : path.resolve(cwd, 'node_modules', '.bin', command)
+        command =
+          command === 'node'
+            ? command
+            : (function () {
+                let local = path.resolve(root, 'node_modules', '.bin', command)
+                if (fs.existsSync(local)) {
+                  return local
+                }
+
+                let hoisted = path.resolve(root, '..', '..', 'node_modules', '.bin', command)
+                if (fs.existsSync(hoisted)) {
+                  return hoisted
+                }
+
+                return `npx ${command}`
+              })()
         return [command, args]
       })()
 

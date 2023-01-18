@@ -1,7 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 
+import { env } from '../src/lib/sharedState'
 import { html, run, css, defaults } from './util/run'
+
+let oxideSkip = env.OXIDE ? test.skip : test
 
 test('basic usage', () => {
   let config = {
@@ -16,7 +19,9 @@ test('basic usage', () => {
   `
 
   return run(input, config).then((result) => {
-    let expectedPath = path.resolve(__dirname, './basic-usage.test.css')
+    let expectedPath = env.OXIDE
+      ? path.resolve(__dirname, './basic-usage.oxide.test.css')
+      : path.resolve(__dirname, './basic-usage.test.css')
     let expected = fs.readFileSync(expectedPath, 'utf8')
 
     expect(result.css).toMatchFormattedCss(expected)
@@ -657,6 +662,58 @@ it('A bare ring-opacity utility is supported when using respectDefaultRingColorO
     expect(result.css).toMatchFormattedCss(css`
       .ring-opacity {
         --tw-ring-opacity: 0.33;
+      }
+    `)
+  })
+})
+
+it('Ring color utilities are generated when using respectDefaultRingColorOpacity', () => {
+  let config = {
+    future: { respectDefaultRingColorOpacity: true },
+    content: [{ raw: html`<div class="ring ring-blue-500"></div>` }],
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      .ring {
+        --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
+          var(--tw-ring-offset-color);
+        --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width))
+          var(--tw-ring-color);
+        box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+      }
+      .ring-blue-500 {
+        --tw-ring-opacity: 1;
+        --tw-ring-color: rgb(59 130 246 / var(--tw-ring-opacity));
+      }
+    `)
+  })
+})
+
+oxideSkip('should not crash when group names contain special characters', () => {
+  let config = {
+    future: { respectDefaultRingColorOpacity: true },
+    content: [
+      {
+        raw: '<div class="group/${id}"><div class="group-hover/${id}:visible"></div></div>',
+      },
+    ],
+    corePlugins: { preflight: false },
+  }
+
+  let input = css`
+    @tailwind utilities;
+  `
+
+  return run(input, config).then((result) => {
+    expect(result.css).toMatchFormattedCss(css`
+      .group\/\$\{id\}:hover .group-hover\/\$\{id\}\:visible {
+        visibility: visible;
       }
     `)
   })
