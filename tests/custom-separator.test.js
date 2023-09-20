@@ -19,7 +19,8 @@ test('custom separator', () => {
 
   return run('@tailwind utilities', config).then((result) => {
     expect(result.css).toMatchFormattedCss(css`
-      .group:hover .group-hover_focus-within_text-left:focus-within {
+      .group:hover .group-hover_focus-within_text-left:focus-within,
+      :is(.dark .dark_focus_text-left:focus) {
         text-align: left;
       }
       :is([dir='rtl'] .rtl_active_text-center:active) {
@@ -29,9 +30,6 @@ test('custom separator', () => {
         .motion-safe_hover_text-center:hover {
           text-align: center;
         }
-      }
-      :is(.dark .dark_focus_text-left:focus) {
-        text-align: left;
       }
       @media (min-width: 768px) {
         .md_hover_text-right:hover {

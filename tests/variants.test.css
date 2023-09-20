@@ -300,9 +300,7 @@
 .peer:enabled ~ .peer-enabled\:flex,
 .peer:disabled ~ .peer-disabled\:flex,
 .peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:flex,
-.peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:first\:flex:first-child,
-:-webkit-any([dir='ltr'] .ltr\:flex),
-:-webkit-any([dir='rtl'] .rtl\:flex) {
+.peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:first\:flex:first-child {
   display: flex;
 }
 .active\:flex:active,
@@ -377,20 +375,8 @@
 .peer:enabled ~ .peer-enabled\:flex,
 .peer:disabled ~ .peer-disabled\:flex,
 .peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:flex,
-.peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:first\:flex:first-child,
-:is([dir='ltr'] .ltr\:flex),
-:is([dir='rtl'] .rtl\:flex) {
+.peer:disabled:focus:hover ~ .peer-disabled\:peer-focus\:peer-hover\:first\:flex:first-child {
   display: flex;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .motion-safe\:flex {
-    display: flex;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .motion-reduce\:flex {
-    display: flex;
-  }
 }
 @media (prefers-contrast: more) {
   .contrast-more\:flex {
@@ -404,8 +390,20 @@
 }
 :is(.dark .dark\:flex),
 :is(.dark .group:disabled:focus:hover .dark\:group-disabled\:group-focus\:group-hover\:flex),
-:is(.dark .peer:disabled:focus:hover ~ .dark\:peer-disabled\:peer-focus\:peer-hover\:flex) {
+:is(.dark .peer:disabled:focus:hover ~ .dark\:peer-disabled\:peer-focus\:peer-hover\:flex),
+:is([dir='ltr'] .ltr\:flex),
+:is([dir='rtl'] .rtl\:flex) {
   display: flex;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motion-safe\:flex {
+    display: flex;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduce\:flex {
+    display: flex;
+  }
 }
 @media print {
   .print\:flex {

@@ -153,6 +153,13 @@ test('prefix', () => {
       .tw-group:hover .group-hover\:focus-within\:tw-text-left:focus-within {
         text-align: left;
       }
+      :is(.tw-dark .dark\:tw-bg-\[rgb\(255\,0\,0\)\]) {
+        --tw-bg-opacity: 1;
+        background-color: rgb(255 0 0 / var(--tw-bg-opacity));
+      }
+      :is(.tw-dark .dark\:focus\:tw-text-left:focus) {
+        text-align: left;
+      }
       :is([dir='rtl'] .rtl\:active\:tw-text-center:active) {
         text-align: center;
       }
@@ -160,13 +167,6 @@ test('prefix', () => {
         .motion-safe\:hover\:tw-text-center:hover {
           text-align: center;
         }
-      }
-      :is(.tw-dark .dark\:tw-bg-\[rgb\(255\,0\,0\)\]) {
-        --tw-bg-opacity: 1;
-        background-color: rgb(255 0 0 / var(--tw-bg-opacity));
-      }
-      :is(.tw-dark .dark\:focus\:tw-text-left:focus) {
-        text-align: left;
       }
       @media (min-width: 768px) {
         .md\:tw--ml-5 {

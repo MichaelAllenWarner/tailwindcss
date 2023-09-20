@@ -135,6 +135,13 @@ test('important selector', () => {
       #app :is(.group:hover .group-hover\:focus-within\:text-left:focus-within) {
         text-align: left;
       }
+      #app :is(.dark .dark\:before\:underline):before {
+        content: var(--tw-content);
+        text-decoration-line: underline;
+      }
+      #app :is(.dark .dark\:focus\:text-left:focus) {
+        text-align: left;
+      }
       #app :is([dir='rtl'] .rtl\:active\:text-center:active) {
         text-align: center;
       }
@@ -142,13 +149,6 @@ test('important selector', () => {
         #app .motion-safe\:hover\:text-center:hover {
           text-align: center;
         }
-      }
-      #app :is(.dark .dark\:before\:underline):before {
-        content: var(--tw-content);
-        text-decoration-line: underline;
-      }
-      #app :is(.dark .dark\:focus\:text-left:focus) {
-        text-align: left;
       }
       @media (min-width: 768px) {
         #app .md\:hover\:text-right:hover {

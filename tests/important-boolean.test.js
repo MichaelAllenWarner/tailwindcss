@@ -134,7 +134,8 @@ test('important boolean', () => {
       .custom-util {
         button: no;
       }
-      .group:hover .group-hover\:focus-within\:text-left:focus-within {
+      .group:hover .group-hover\:focus-within\:text-left:focus-within,
+      :is(.dark .dark\:focus\:text-left:focus) {
         text-align: left !important;
       }
       :is([dir='rtl'] .rtl\:active\:text-center:active) {
@@ -144,9 +145,6 @@ test('important boolean', () => {
         .motion-safe\:hover\:text-center:hover {
           text-align: center !important;
         }
-      }
-      :is(.dark .dark\:focus\:text-left:focus) {
-        text-align: left !important;
       }
       @media (min-width: 768px) {
         .md\:hover\:text-right:hover {

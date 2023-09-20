@@ -731,6 +731,9 @@ test('it works', () => {
       .foo\:hover\:custom-util:hover {
         background: #abcdef !important;
       }
+      :is(.dark .dark\:custom-util) {
+        background: #abcdef;
+      }
       @media (prefers-reduced-motion: no-preference) {
         .motion-safe\:transition {
           transition-property: color, background-color, border-color, text-decoration-color, fill,
@@ -749,9 +752,6 @@ test('it works', () => {
           transition-duration: 0.15s;
           transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
-      }
-      :is(.dark .dark\:custom-util) {
-        background: #abcdef;
       }
       @media (min-width: 640px) {
         .sm\:text-center {
