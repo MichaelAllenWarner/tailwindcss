@@ -749,13 +749,13 @@ function resolvePlugins(context, root) {
     variantPlugins['hasVariants'],
     variantPlugins['ariaVariants'],
     variantPlugins['dataVariants'],
+    variantPlugins['darkVariants'],
   ]
   let afterVariants = [
     variantPlugins['supportsVariants'],
     variantPlugins['directionVariants'],
     variantPlugins['reducedMotionVariants'],
     variantPlugins['prefersContrastVariants'],
-    variantPlugins['darkVariants'],
     variantPlugins['printVariant'],
     variantPlugins['screenVariants'],
     variantPlugins['orientationVariants'],
